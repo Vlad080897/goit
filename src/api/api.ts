@@ -6,4 +6,3 @@ export const getReposApi = async () =>
     .get<ReposResponseType>(
       "https://api.github.com/search/repositories?q=react"
     )
-    .then((res) => res);
