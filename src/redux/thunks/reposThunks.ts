@@ -3,15 +3,15 @@ import { RES_STATUS } from "../../types/enums";
 import { reposList } from "../reducers/repos";
 import { AppDispatch } from "../store/store";
 
-export const getRepos = () => async (dispatch: AppDispatch) => {
-  const { getReposRequest, getReposSuccess } = reposList.actions;
+export const getRepos =
+  (search?: string, page?: number) => async (dispatch: AppDispatch) => {
+    const { getReposRequest, getReposSuccess } = reposList.actions;
 
-  dispatch(getReposRequest());
+    dispatch(getReposRequest());
 
-  const res = await getReposApi();
+    const res = await getReposApi(page, search);
 
-  if (res.status === RES_STATUS.SUCCESS) {
-    const repos = res.data.items.slice(0, 20);
-    dispatch(getReposSuccess(repos));
-  }
-};
+    if (res.status === RES_STATUS.SUCCESS) {
+      dispatch(getReposSuccess(res.data));
+    }
+  };

@@ -1,29 +1,43 @@
-import React, { Dispatch, SetStateAction } from "react";
-import { Repository } from "../../types/repos";
+import React, { Dispatch, SetStateAction, useMemo } from "react";
 import styled from "styled-components";
+import { Repository } from "../../types/repos";
 
 type PaginationType = {
   repos: Repository[];
   nPages: number;
   currentPage: number;
-  setCurrentPage: Dispatch<SetStateAction<number>>;
+  totalPages: number;
+  startPage: number;
+  setStartPage: Dispatch<SetStateAction<number>>;
+  handlePageChange: (page: number) => void;
 };
 
 const Pagination: React.FC<PaginationType> = ({
   repos,
   nPages,
   currentPage,
-  setCurrentPage,
+  setStartPage,
+  startPage,
+  totalPages,
+  handlePageChange,
 }) => {
+  const pages = useMemo(
+    () =>
+      Array.from({ length: nPages })
+        .map((_, index) => index + 1)
+        .slice(-5),
+    [nPages]
+  );
+
   const prevPage = () => {
-    if (currentPage !== 1) {
-      setCurrentPage(currentPage - 1);
+    if (nPages !== 5) {
+      setStartPage(startPage - 5);
     }
   };
 
   const nextPage = () => {
-    if (currentPage !== nPages) {
-      setCurrentPage(currentPage + 1);
+    if (nPages < totalPages) {
+      setStartPage(startPage + 5);
     }
   };
 
@@ -35,9 +49,14 @@ const Pagination: React.FC<PaginationType> = ({
     <Wrapper>
       <Button onClick={prevPage}>Prev</Button>
       <PagesWrapper>
-        {Array.from({ length: nPages }).map((_, index) => (
-          <PageNumber currentPage={currentPage} index={index}>
-            {index + 1}
+        {pages.map((page) => (
+          <PageNumber
+            key={page}
+            currentPage={currentPage}
+            page={page}
+            onClick={() => handlePageChange(page)}
+          >
+            {page}
           </PageNumber>
         ))}
       </PagesWrapper>
@@ -62,11 +81,12 @@ const PagesWrapper = styled("div")`
 
 const PageNumber = styled("div")<{
   currentPage: number;
-  index: number;
+  page: number;
 }>`
   padding: 5px;
-  border-bottom: ${({ currentPage, index }) =>
-    currentPage === index + 1 ? "3px solid #65B79A" : "none"};
+  cursor: pointer;
+  border-bottom: ${({ currentPage, page }) =>
+    currentPage === page ? "3px solid #65B79A" : "none"};
 `;
 
 const Button = styled("button")`

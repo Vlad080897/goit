@@ -1,36 +1,54 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
-import { useAppSelector } from "../../redux/hooks/hooks";
-import { getIsLoading, getReposSelector } from "../../redux/selectors/repos";
+import { useAppDispatch, useAppSelector } from "../../redux/hooks/hooks";
+import useDebounced from "../../redux/hooks/useDebounced";
+import {
+  getIsLoading,
+  getReposSelector,
+  getTotalCount,
+} from "../../redux/selectors/repos";
+import { getRepos } from "../../redux/thunks/reposThunks";
 import { Repository } from "../../types/repos";
 import Pagination from "../pagination/Pagination";
 import ReposItem from "./ReposItem";
 
+const DEFAULT_VALUE = "react";
+
 const Repositories = () => {
+  const dispatch = useAppDispatch();
+
   const repos = useAppSelector(getReposSelector);
   const isLoading = useAppSelector(getIsLoading);
+  const totalCount = useAppSelector(getTotalCount);
 
   const [currentRepos, setCurrentRepos] = useState<Repository[]>([]);
   const [searchValue, setSearchValue] = useState("");
+  const [startPage, setStartPage] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
-  const [reposPerPage] = useState(3);
+  const [nPages, setPages] = useState(0);
 
-  const indexOfLastRecord = currentPage * reposPerPage;
-  const indexOfFirstRecord = indexOfLastRecord - reposPerPage;
-  const nPages = Math.ceil(currentRepos.length / reposPerPage);
+  const debouncedSearch = useDebounced(searchValue, 500);
+  const totalPages = totalCount / 3;
 
   const repositories = useMemo(
     () =>
       !currentRepos.length && searchValue
         ? "There's no result for your search"
-        : currentRepos
-            .slice(indexOfFirstRecord, indexOfLastRecord)
-            .map((repo) => <ReposItem key={repo.id} repo={repo} />),
-    [currentRepos, searchValue, indexOfLastRecord, indexOfFirstRecord]
+        : currentRepos.map((repo) => <ReposItem key={repo.id} repo={repo} />),
+    [currentRepos, searchValue]
   );
 
-  const handleValueChange = (e: ChangeEvent<HTMLInputElement>) =>
-    setSearchValue(e.currentTarget.value.toLowerCase().trim());
+  const handleValueChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (!e.currentTarget.value) {
+      dispatch(getRepos());
+    }
+    setSearchValue(e.currentTarget.value);
+  };
+
+  const handlePageChange = (page: number) => {
+    dispatch(getRepos(searchValue || DEFAULT_VALUE, page));
+    setCurrentPage(page);
+  };
 
   useEffect(() => {
     if (repos) {
@@ -39,16 +57,16 @@ const Repositories = () => {
   }, [repos]);
 
   useEffect(() => {
-    if (searchValue) {
-      const filteredRepos = repos.filter((repo) =>
-        repo.name.toLowerCase().trim().includes(searchValue)
-      );
-      setCurrentRepos(filteredRepos);
+    setPages(Math.min(startPage + 4, totalCount));
+  }, [startPage, totalPages, totalCount]);
+
+  useEffect(() => {
+    if (debouncedSearch) {
+      dispatch(getRepos(debouncedSearch, 1));
       setCurrentPage(1);
-      return;
+      setStartPage(1);
     }
-    setCurrentRepos(repos);
-  }, [searchValue, repos, currentRepos]);
+  }, [debouncedSearch]);
 
   return (
     <>
@@ -62,7 +80,10 @@ const Repositories = () => {
         nPages={nPages}
         repos={currentRepos}
         currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
+        startPage={startPage}
+        totalPages={totalPages}
+        setStartPage={setStartPage}
+        handlePageChange={handlePageChange}
       />
     </>
   );
